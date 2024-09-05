@@ -24,7 +24,7 @@ const initialError = {
 
 const errorMessages = {
   email: 'Please enter a valid email address',
-  password: 'Password must be at least 4 characters long',
+  password: 'Password must be at least 8 characters long and should be a mix of letters, numbers, and special characters',
 };
 
 export default function Login() {
@@ -36,8 +36,8 @@ export default function Login() {
 
   useEffect(() => {
     if (
-      validateEmail(form.email) && // Check for valid email
-      form.password.trim().length >= 4 &&
+      validateEmail(form.email) &&
+      validatePassword(form.password) &&
       form.terms
     ) {
       setIsValid(true);
@@ -59,7 +59,7 @@ export default function Login() {
     if (fieldName === 'email') {
       newErrors.email = !validateEmail(fieldValue);
     } else if (fieldName === 'password') {
-      newErrors.password = fieldValue.length < 4;
+      newErrors.password = !validatePassword(fieldValue);
     } else if (fieldName === 'terms') {
       newErrors.terms = !fieldValue;
     }
@@ -71,27 +71,36 @@ export default function Login() {
     return emailRegex.test(email.toLowerCase().trim());
   };
 
-  const handleSubmit = (event) => {
+  const passwordRegex = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8}$/;
+  const validatePassword = (password) => {
+    return passwordRegex.test(password);
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.terms) {
-      setErrors({ ...errors, terms: true }); // Correctly use 'terms'
+      setErrors({ ...errors, terms: true });
       return;
     }
     if (!isValid) return;
 
-    axios
-      .get('https://6540a96145bedb25bfc247b4.mockapi.io/api/login')
-      .then((res) => {
-        const user = res.data.find(
-          (item) => item.password == form.password && item.email == form.email
-        );
-        if (user) {
-          setForm(initialForm);
-          history.push('/main');
-        } else {
-          history.push('/error');
-        }
-      });
+    try {
+      const res = await axios.get(
+        'https://6540a96145bedb25bfc247b4.mockapi.io/api/login'
+      );
+      const user = res.data.find(
+        (item) =>
+          item.password === form.password && item.email === form.email
+      );
+      if (user) {
+        setForm(initialForm);
+        history.push('/main');
+      } else {
+        history.push('/error');
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+    }
   };
 
   return (
@@ -105,7 +114,7 @@ export default function Login() {
           type="email"
           onChange={handleChange}
           value={form.email}
-          invalid={errors.email}
+          invalid={!!errors.email} // Ensure invalid is a boolean
         />
         {errors.email && <FormFeedback>{errorMessages.email}</FormFeedback>}
       </FormGroup>
@@ -114,11 +123,11 @@ export default function Login() {
         <Input
           id="examplePassword"
           name="password"
-          placeholder="Enter your password "
+          placeholder="Enter your password"
           type="password"
           onChange={handleChange}
           value={form.password}
-          invalid={errors.password}
+          invalid={!!errors.password} // Ensure invalid is a boolean
         />
         {errors.password && (
           <FormFeedback>{errorMessages.password}</FormFeedback>
@@ -131,10 +140,12 @@ export default function Login() {
           checked={form.terms}
           type="checkbox"
           onChange={handleChange}
+          invalid={!!errors.terms} // Ensure invalid is a boolean
         />{' '}
         <Label htmlFor="terms" check>
           I agree to terms of service and privacy policy
         </Label>
+        {errors.terms && <FormFeedback>You must agree to the terms</FormFeedback>}
       </FormGroup>
       <FormGroup className="text-center p-4">
         <Button disabled={!isValid} color="primary">
