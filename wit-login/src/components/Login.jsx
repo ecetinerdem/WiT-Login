@@ -8,7 +8,6 @@ import {
   Button,
 } from 'reactstrap';
 import { useHistory } from 'react-router-dom';
-
 import axios from 'axios';
 
 const initialForm = {
@@ -16,6 +15,7 @@ const initialForm = {
   password: '',
   terms: false,
 };
+
 const initialError = {
   email: '',
   password: '',
@@ -24,64 +24,52 @@ const initialError = {
 
 const errorMessages = {
   email: 'Please enter a valid email address',
-  password: 'Password must be at least 8 characters long and should be a mix of letters, numbers, and special characters',
+  password:
+    'Password must be at least 8 characters long and should be a mix of letters, numbers, and special characters',
 };
 
 export default function Login() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState(initialError);
   const [isValid, setIsValid] = useState(false);
+  const [touched, setTouched] = useState({ email: false, password: false });
 
   const history = useHistory();
 
   useEffect(() => {
-    if (
-      validateEmail(form.email) &&
-      validatePassword(form.password) &&
-      form.terms
-    ) {
-      setIsValid(true);
-    } else {
-      setIsValid(false);
-    }
-  }, [form]);
+    const validEmail = validateEmail(form.email);
+    const validPassword = validatePassword(form.password);
+    const validTerms = form.terms;
+
+    setErrors({
+      email: touched.email && !validEmail ? errorMessages.email : '',
+      password: touched.password && !validPassword ? errorMessages.password : '',
+      terms: !validTerms ? 'You must accept the terms' : '',
+    });
+
+    setIsValid(validEmail && validPassword && validTerms);
+  }, [form, touched]);
 
   const handleChange = (event) => {
-    let { name, value, type } = event.target;
-    value = type === 'checkbox' ? event.target.checked : value;
-    setForm({ ...form, [name]: value });
-    validateInput(name, value);
+    const { name, value, type } = event.target;
+    const inputValue = type === 'checkbox' ? event.target.checked : value;
+    setForm({ ...form, [name]: inputValue });
+
+    setTouched({ ...touched, [name]: true });
   };
 
-  const validateInput = (fieldName, fieldValue) => {
-    let newErrors = { ...errors };
-
-    if (fieldName === 'email') {
-      newErrors.email = !validateEmail(fieldValue);
-    } else if (fieldName === 'password') {
-      newErrors.password = !validatePassword(fieldValue);
-    } else if (fieldName === 'terms') {
-      newErrors.terms = !fieldValue;
-    }
-    setErrors(newErrors);
-  };
-
-  const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+  const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
   const validateEmail = (email) => {
     return emailRegex.test(email.toLowerCase().trim());
   };
 
-  const passwordRegex = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8}$/;
+  const passwordRegex = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8,}$/;
   const validatePassword = (password) => {
     return passwordRegex.test(password);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!form.terms) {
-      setErrors({ ...errors, terms: true });
-      return;
-    }
     if (!isValid) return;
 
     try {
@@ -114,9 +102,9 @@ export default function Login() {
           type="email"
           onChange={handleChange}
           value={form.email}
-          invalid={!!errors.email} // Ensure invalid is a boolean
+          invalid={!!errors.email}
         />
-        {errors.email && <FormFeedback>{errorMessages.email}</FormFeedback>}
+        {errors.email && <FormFeedback>{errors.email}</FormFeedback>}
       </FormGroup>
       <FormGroup>
         <Label for="examplePassword">Password</Label>
@@ -127,10 +115,10 @@ export default function Login() {
           type="password"
           onChange={handleChange}
           value={form.password}
-          invalid={!!errors.password} // Ensure invalid is a boolean
+          invalid={!!errors.password}
         />
         {errors.password && (
-          <FormFeedback>{errorMessages.password}</FormFeedback>
+          <FormFeedback>{errors.password}</FormFeedback>
         )}
       </FormGroup>
       <FormGroup check>
@@ -140,12 +128,12 @@ export default function Login() {
           checked={form.terms}
           type="checkbox"
           onChange={handleChange}
-          invalid={!!errors.terms} // Ensure invalid is a boolean
+          invalid={!!errors.terms}
         />{' '}
         <Label htmlFor="terms" check>
           I agree to terms of service and privacy policy
         </Label>
-        {errors.terms && <FormFeedback>You must agree to the terms</FormFeedback>}
+        {errors.terms && <FormFeedback>{errors.terms}</FormFeedback>}
       </FormGroup>
       <FormGroup className="text-center p-4">
         <Button disabled={!isValid} color="primary">
